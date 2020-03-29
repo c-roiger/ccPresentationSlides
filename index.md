@@ -1,3 +1,3 @@
 
 
-[Link to slides](~/zemmelsCCpresentation.html)
+[Link to slides](zemmelsCCpresentation.html)
