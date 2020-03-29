@@ -27,6 +27,8 @@ pre {
 
 ```{r setup, include=FALSE}
 options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
+set.seed(3262020)
 library(magrittr,cmcR)
 ```
 
@@ -119,24 +121,20 @@ knitr::include_graphics(path = "images/primerBFImpressionDiagram.png")
 ---
 # Cartridge Case Surface Matrices
 
-```{r echo=TRUE,eval=FALSE,strip.white=TRUE}
- x3p1 <- x3ptools::read_x3p("path/to/file.x3p") %>%
-   x3ptools::sample_x3p(m = 8) #for visualization purposes
- x3ptools::image_x3p(x3p1)
+```{r echo=TRUE,eval=TRUE,strip.white=TRUE}
+fadul1.1 <- x3ptools::read_x3p("data/Fadul 1-1.x3p")
+```
+```{r eval=FALSE}
+x3ptools::image_x3p(fadul1.1)
 ```
 
-```{r echo=FALSE,eval=TRUE,cache=TRUE,cache=TRUE}
-fadul1.1 <- x3ptools::read_x3p("~/bulletCartridgeScans/fadul_allScans/Fadul_1/cc/Fadul 1-1.x3p")
-
-fadul1.1_downSampled <- x3ptools::sample_x3p(fadul1.1,m = 8)
-
-x3ptools::image_x3p(fadul1.1_downSampled,zoom = .7)
-
-rglscene1 <- rgl::scene3d()
-
-rgl::rgl.close()
-
-rgl::rglwidget(rglscene1,width = 300)
+```{r eval=TRUE,echo=FALSE,fig.align='center',fig.height=6}
+#alternative:
+fadul1.1 %>%
+  # x3ptools::sample_x3p(m = 8) %>%
+  .$surface.matrix %>%
+  imager::as.cimg() %>%
+  plot()
 ```
 
 ---
@@ -225,23 +223,13 @@ knitr::include_graphics("images/ransacMethod.png")
 
 - Use RANSAC method to identify BF impression height value in scan
 
-    1) Take residuals between fitted plane and observed values within the final selection threshold specified
+    - Take residuals between fitted plane and observed values within the final selection threshold specified
     
-    2) Take observed values within final selection threshold
+    - Or, take observed values within final selection threshold
 
-```{r eval = FALSE}
-x3p1$surface.matrix <- x3p1$surface.matrix %>%
-  cmcR::preProcess_ransac(inlierTreshold = 10^-5,
-                          finalSelectionThreshold = 2*(10^-5),
-                          iters = 150) %>%
-  cmcR::preProcess_levelBF(useResiduals = TRUE)
-
-x3ptools::image_x3p(x3p1)
-```
-
-```{r echo=FALSE,cache=TRUE}
-set.seed(3262020)
-fadul1.1 <- x3ptools::read_x3p("~/bulletCartridgeScans/fadul_allScans/Fadul_1/cc/Fadul 1-1.x3p")
+```{r cache=TRUE}
+fadul1.1 <- x3ptools::read_x3p("data/Fadul 1-1.x3p") %>%
+  x3ptools::sample_x3p(m = 2)
 
 fadul1.1$surface.matrix <- fadul1.1$surface.matrix %>%
   cmcR::preProcess_ransac(inlierTreshold = 10^-5,
@@ -253,63 +241,153 @@ fadul1.1$surface.matrix <- fadul1.1$surface.matrix %>%
 ---
 #1. Identify BF impression height value
 
-- Relies on randomly sampling surface matrix, so results may differ between uses
+- Note: relies on randomly sampling surface matrix, so results may differ between uses
 
-```{r echo=FALSE,cache=TRUE,fig.align='center'}
+```{r eval=TRUE,echo=FALSE,fig.align='center',fig.height= 6.5}
+#alternative:
 fadul1.1 %>%
-  x3ptools::sample_x3p(m = 8) %>%
-  x3ptools::image_x3p(zoom = .7)
-
-rglscene1 <- rgl::scene3d()
-
-rgl::rgl.close()
-
-rgl::rglwidget(rglscene1,width = 300)
+  # x3ptools::sample_x3p(m = 8) %>%
+  .$surface.matrix %>%
+  imager::as.cimg() %>%
+  plot()
 ```
 
 ---
 #2. Removing "minutiae"
 
-```{r eval=FALSE}
-x3p1$surface.matrix <- x3p1$surface.matrix %>%
-  cmcR::preProcess_cropWS(croppingThresh = 2)
-```
+- Crop-out whitespace exterior to cartridge case scan
 
-```{r echo=FALSE,cache=TRUE}
+```{r cache=TRUE}
 fadul1.1$surface.matrix <- fadul1.1$surface.matrix %>%
   cmcR::preProcess_cropWS(croppingThresh = 2)
+```
+```{r echo=FALSE,fig.align='center',fig.height=6,cache=TRUE}
+fadul1.1$surface.matrix %>%
+  imager::as.cimg() %>%
+  plot()
+```
+
+- Remove observations within firing pin impression circle
+
+---
+#2. Removing "minutiae" - Hough Transform
+
+- Need to "detect" firing pin impression circle in arbitrary scan
+
+    - Note: Glocks have rectangular firing pins, so doesn't necessarily generalize
+    
+- Hough transform is a voting-based shape detection technique
+
+```{r echo=FALSE,fig.align='center'}
+knitr::include_graphics("images/houghTransformCircle.jpg")
+```
+
+---
+#2. Removing "minutiae" - Hough Transform
+
+- Need to estimate radius for arbitrary scan
+
+- Count number of non-`NA` observations per row/column and find modes
+
+```{r echo=FALSE,fig.align='center',dpi=190,cache=TRUE}
+knitr::include_graphics("images/rowSumRadiusEstim.png")
 ```
 
 
 ---
 #2. Removing "minutiae" - Hough Transform
 
-```{r eval=FALSE}
-x3p1$surface.matrix <- x3p1$surface.matrix %>%
-  cmcR::preProcess_removeFPCircle()
+- Estimate radius values for various rotations of scan
+
+.pull-left[
+```{r echo=FALSE,cache=TRUE}
+knitr::include_graphics("images/accumulator.gif")
+```
+]
+.pull-right[
+```{r echo=FALSE,cache=TRUE}
+knitr::include_graphics("images/houghTransformFilter.gif")
+```
+]
+
+---
+#2. Removing "minutiae" - Hough Transform
+
+- Each radius value assigned "score" indicating strength of evidence
+
+- Use Hough transform score to determine range of "confident" radius values
+
+```{r echo=FALSE,fig.align='center',cache=TRUE,fig.retina=2}
+knitr::include_graphics("images/houghScorePlot.png")
 ```
 
-```{r echo=FALSE,cache=TRUE}
+---
+#2. Removing "minutiae" - Hough Transform
+
+```{r cache=TRUE}
 fadul1.1$surface.matrix <- fadul1.1$surface.matrix %>%
-  cmcR::preProcess_removeFPCircle(smootherSize = 71) 
+  cmcR::preProcess_removeFPCircle() 
 ```
+```{r echo=FALSE,fig.align='center',fig.height=6,cache=TRUE}
+fadul1.1$surface.matrix %>%
+  imager::as.cimg() %>%
+  plot()
+```
+---
+#3. Gaussian filtering
+
+- "Low-frequency", global structure due to, e.g., manufacturing specs
+
+- "High-frequency" noise due to, e.g., scanning process
+
+--
+
+- Goal is to match cartridge cases based on *breech face impressions*, not on whether they share a manufacturer
+
+- False positive rate likely to increase if these structures aren't removed
+
+--
+
+- Gaussian filtering reduces effects of large and small-scale structure
 
 ---
 #3. Gaussian filtering
 
-```{r eval=FALSE}
-x3p1$surface.matrix <- x3p1$surface.matrix %>%
-  cmcR::preProcess_gaussFilter(res = 25, #downsampled resolution
-                               wavelength = c(16,250),
-                               filtertype = "bp")
-```
+- Lowpass filtering = "smoothing"
 
-```{r echo=FALSE,cache=TRUE}
+    - Gaussian-weighted moving average
+
+--
+
+- Highpass filtering = "sharpening"
+
+    - Subtract complementary lowpass-filtered matrix
+
+--
+
+- Bandpass filtering = highpass followed by lowpass
+
+--
+
+- Target signals of particular frequency by controlling Gaussian standard deviation
+
+    - Larger s.d. = averaging over more observations = "smoother" output
+
+---
+#3. Gaussian filtering
+
+```{r echo=TRUE,cache=TRUE}
 fadul1.1$surface.matrix <- fadul1.1$surface.matrix %>%
   cmcR::preProcess_gaussFilter(res = fadul1.1$header.info$incrementY,
                                wavelength = c(16,250),
                                filtertype = "bp")
 ```
+```{r echo=FALSE,fig.align='center',fig.height=5.5,cache=TRUE}
+fadul1.1$surface.matrix %>%
+  imager::as.cimg() %>%
+  plot()
+```
+
 
 ---
 #Pre-processing procedures conclusion
@@ -330,8 +408,89 @@ class: inverse, middle, center
 ---
 #Cross-correlation function
 
+- For real-valued, bivariate funtions $f(x,y),g(x,y)$, $x,y \in \mathbb{R}$, *cross-correlation function* (CCF) is
+
+$$(f \star g)(x,y) := \int_{-\infty}^\infty \int_{-\infty}^\infty f(t,s) g(t + x,s + y)\ dtds$$
+
+- Note: equivalent to *convolution* in real-valued case
+
+--
+
+- **Discrete analogue:** For two discrete, bivariate functions $A[m,n], B[m,n]$, $m,n \in \mathbb{Z}$, the CCF is
+
+$$(A \star B)[m,n] := \sum_{i = -\infty}^\infty \sum_{j = -\infty}^\infty A[i,j] B[i + m,j + n]$$
+
+--
+
+- Think of $A[m,n]$ as $m$th row and $n$th column of matrix $A$
+
 ---
-#Cross-correlation theorem
+#Cross-Correlation theorem
+
+- Calculating CCF by definition is computationally infeasible
+
+--
+
+- By the Cross-Correlation theorem,
+$$A \star B = \mathcal{F}^{-1}\left(\overline{\mathcal{F}(A)} \cdot \mathcal{F}(B)\right)$$
+ - $\mathcal{F}(\cdot)$ denotes Fourier transform
+ 
+ - $\mathcal{F}^{-1}(\cdot)$ denotes inverse Fourier transform
+
+ - $\overline{f}$ denotes complex conjugate of function $f$
+ 
+ - multiplication on RHS is pointwise (Hadamard) multiplication
+
+--
+
+- *Fast Fourier Transform* drastically improves computational efficiency
+
+---
+#Aligning by CCF
+
+- CCF indicates how one matrix should be translated to align with another
+
+$$\text{CCF}_{\max} := \max_{m,n} \mathcal{F}^{-1}\left(\overline{\mathcal{F}(A)} \cdot \mathcal{F}(B)\right)[m,n]$$
+
+$$[m^*,n^*] := \arg\max_{m,n} \mathcal{F}^{-1}\left(\overline{\mathcal{F}(A)} \cdot \mathcal{F}(B)\right)[m,n]$$
+
+--
+
+- Note: this method requires replacing missing/`NA` values
+
+ - $\text{CCF}_{\max}$ values are often "deflated" for cartridge case scans
+ 
+ - $[m^*,n^*]$ are often good estimates of "correct" translation parameters
+ 
+--
+ 
+- "True" $\text{CCF}_{\max}$ value, without replacing `NA`s, can be determined after aligning matrices by $[m^*,n^*]$
+
+---
+#Aligning by CCF - example
+
+.pull-left[
+```{r echo=FALSE,fig.align='center'}
+knitr::include_graphics("images/gaussianFilterInitialPlot.png")
+```
+]
+
+.pull-right[
+```{r echo=FALSE,fig.align='center'}
+knitr::include_graphics("images/ccfExample_im2.png")
+```
+]
+
+```{r echo=FALSE,fig.align='center',dpi=170}
+knitr::include_graphics("images/ccfExample_map.png")
+```
+
+---
+# Cell-based comparison procedure
+
+```{r echo=FALSE,eval=TRUE,fig.align='center'}
+knitr::include_graphics(path = "images/im1_im2_cellComparison.png")
+```
 
 ---
 # Cell-based comparison procedure
@@ -372,26 +531,16 @@ class: inverse, middle, center
 
 - Using $(dx,dy)'$ values, calculate pairwise-complete correlation between cell and a cell-sized matrix extracted from surface matrix 2
 
-```{r echo=FALSE,fig.retina=3,fig.align='center'}
+```{r echo=FALSE,fig.align='center',dpi=180}
 knitr::include_graphics("./images/ccfCellPairExample.png")
 ```
 
 ---
 # Cell-based comparison procedure
 
-```{r echo=TRUE,eval=FALSE}
-comparison1 <- cmcR::cellCCF(x3p1,x3p2,
-                             thetas = seq(-30,30,by = 3),
-                             cellNumHoriz = 8,
-                             regionToCellProp = 4,
-                             minObservedProp = .15,
-                             centerCell = "individualCell",
-                             scaleCell = "individualCell")
-comparison1$ccfResults$`-30`
-```
-
-```{r echo=FALSE,cache=TRUE}
-fadul1.2 <- x3ptools::read_x3p("~/bulletCartridgeScans/fadul_allScans/Fadul_1/cc/Fadul 1-2.x3p")
+```{r echo=FALSE,eval=TRUE,cache=TRUE}
+fadul1.2 <- x3ptools::read_x3p("~/bulletCartridgeScans/fadul_allScans/Fadul_1/cc/Fadul 1-2.x3p") %>%
+  x3ptools::sample_x3p(m = 2)
 
 fadul1.2$surface.matrix <- fadul1.2$surface.matrix %>%
   cmcR::preProcess_ransac(inlierTreshold = 10^-5,
@@ -399,11 +548,13 @@ fadul1.2$surface.matrix <- fadul1.2$surface.matrix %>%
                           iters = 150) %>%
   cmcR::preProcess_levelBF(useResiduals = TRUE) %>%
   cmcR::preProcess_cropWS(croppingThresh = 2) %>%
-  cmcR::preProcess_removeFPCircle(smootherSize = 71) %>%
+  cmcR::preProcess_removeFPCircle() %>%
   cmcR::preProcess_gaussFilter(res = fadul1.2$header.info$incrementY,
                                wavelength = c(16,250),
                                filtertype = "bp")
+```
 
+```{r echo=TRUE,cache=TRUE}
 comparison1 <- cmcR::cellCCF(fadul1.1,
                              fadul1.2,
                              thetas = seq(-30,30,by = 3),
@@ -412,6 +563,17 @@ comparison1 <- cmcR::cellCCF(fadul1.1,
                              minObservedProp = .15,
                              centerCell = "individualCell",
                              scaleCell = "individualCell")
+```
+```{r eval=FALSE}
+comparison1$ccfResults$`-30`
+```
+
+
+```{r echo=FALSE}
+comparison1$ccfResults$`-30` %>%
+  knitr::kable(format = "html") %>%
+  kableExtra::kable_styling() %>%
+  kableExtra::scroll_box(height = "200px")
 ```
 
 
@@ -428,16 +590,16 @@ class: inverse, middle, center
     - $\hat{\pmb{\beta}}_{\max,i}$ for $i = 1,....,n$ cells
 
 
-```{r eval=FALSE}
+```{r cache=TRUE}
 topResults <- cmcR::topResultsPerCell(comparison1$ccfResults)
-topResults #see next slide
 ```
 
 ---
 #Initially proposed method
+```{r eval=FALSE}
+topResults
+```
 ```{r echo=FALSE}
-topResults <- cmcR::topResultsPerCell(comparison1$ccfResults)
-
 topResults %>%
   knitr::kable(format = "html") %>%
   kableExtra::kable_styling() %>%
@@ -464,21 +626,20 @@ topResults %>%
 ---
 #Initially proposed method
 
-```{r eval=FALSE}
-topResults %>%
+```{r cache=TRUE}
+initialCMCs <- topResults %>%
   cmcR::cmcFilter(consensus_function = median,
-                  corr_thresh = .7,
+                  ccf_thresh = .6,
                   dx_thresh = 20,
                   theta_thresh = 3)
 ```
-
+```{r eval=FALSE}
+initialCMCs #11 initial CMCs
+```
 
 ```{r echo=FALSE}
-topResults %>%
-  cmcR::cmcFilter(consensus_function = median,
-                  corr_thresh = .7,
-                  dx_thresh = 20,
-                  theta_thresh = 3) %>%
+initialCMCs %>%
+  dplyr::arrange(cellNum) %>%
   knitr::kable(format = "html") %>%
   kableExtra::kable_styling() %>%
   kableExtra::scroll_box(height = "300px")
@@ -528,23 +689,7 @@ knitr::include_graphics("images/knmCMCpertheta.png")
 
 - Otherwise, count CMCs within `theta_thresh` of the CMC mode for both comparison directions, excluding replicates
 
-```{r eval=FALSE}
-comparison2 <- cmcR::cellCCF_bothDirections(x3p1,x3p2,
-                                            thetas = seq(-30,30,by = 3),
-                                            cellNumHoriz = 8,
-                                            regionToCellProp = 4,
-                                            minObservedProp = .15,
-                                            centerCell = "individualCell",
-                                            scaleCell = "individualCell")
-
-cmc <- comparison2 %>%
-  cmcR::cmcFilter_improved(consensus_function = median,
-                           corr_thresh = .7,
-                           dx_thresh = 20,
-                           theta_thresh = 3)
-```
-
-```{r echo=FALSE,cache=TRUE}
+```{r echo=TRUE,cache=TRUE}
 comparison2 <- cmcR::cellCCF_bothDirections(fadul1.1,fadul1.2,
                                             thetas = seq(-30,30,by = 3),
                                             cellNumHoriz = 8,
@@ -555,7 +700,7 @@ comparison2 <- cmcR::cellCCF_bothDirections(fadul1.1,fadul1.2,
 
 cmc <- comparison2 %>%
   cmcR::cmcFilter_improved(consensus_function = median,
-                           corr_thresh = .7,
+                           ccf_thresh = .6,
                            dx_thresh = 20,
                            theta_thresh = 3)
 ```
@@ -565,9 +710,8 @@ cmc <- comparison2 %>%
 # "Improved" method
 
 ```{r eval=FALSE}
-cmc$finalCMCs
+cmc$finalCMCs #27 final CMCs
 ```
-
 ```{r echo=FALSE}
 cmc$finalCMCs %>%
   dplyr::arrange(cellNum) %>%
@@ -578,25 +722,12 @@ cmc$finalCMCs %>%
 
 
 ---
-```{r eval=FALSE}
-cmcR::cmcPlot(x3p1,cmcDF = cmc$initialCMCs[[1]],method = "ggplot2")
+```{r echo=TRUE,fig.height=3.2,fig.align='center',cache=TRUE}
+cmcR::cmcPlot(fadul1.1,cmcDF = cmc$initialCMCs[[1]],method = "ggplot2")
 ```
 
-```{r echo=FALSE,fig.height=3.2,fig.align='center'}
-cmcR::cmcPlot(fadul1.1,
-              cmcDF = cmc$initialCMCs[[1]],
-              method = "ggplot2")
-```
-
-
-```{r eval=FALSE}
-cmcR::cmcPlot(x3p1,cmcDF = cmc$finalCMCs,method = "ggplot2")
-```
-
-```{r echo=FALSE,fig.height=3.2,fig.align='center'}
-cmcR::cmcPlot(fadul1.1,
-              cmcDF = cmc$finalCMCs,
-              method = "ggplot2")
+```{r echo=TRUE,fig.height=3.2,fig.align='center',cache=TRUE}
+cmcR::cmcPlot(fadul1.1,cmcDF = cmc$finalCMCs,method = "ggplot2")
 ```
 
 
@@ -629,12 +760,10 @@ class: inverse, middle, center
     - `R` Journal submission
 
     - `cmcR` package submission to CRAN
-  
---  
 
 - **Longer-term:**
 
-    - Techniques for dealing with `NA` values
+    - Improvements to CMC methodology (e.g., dealing with `NA` values)
 
     - Principled approach to quantifying and/or modelling similarity
 
@@ -646,3 +775,8 @@ class: inverse, middle, center
 class: center, middle
 
 # Questions?
+
+---
+class: center, middle
+
+# Thank you!
