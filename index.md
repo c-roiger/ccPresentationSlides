@@ -1,3 +1,3 @@
 #Joe Zemmels Creative Component Slides
 
-[slide link](ccPresentationSlides/zemmelsCCPresentation.html)
+[slide link](/zemmelsCCPresentation.html)
