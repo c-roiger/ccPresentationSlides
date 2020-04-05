@@ -74,15 +74,8 @@ knitr::include_graphics(path = "images/cartridgeCaseDiagram.png",dpi = 200)
 ]
 
 .footnote[
-[1] [Image Source](https://commons.wikimedia.org/wiki/File:Bulletfixed.PNG)
+[Image Source](https://commons.wikimedia.org/wiki/File:Bulletfixed.PNG)
 ]
-
-<!-- --- -->
-<!-- background-image: url(`r xaringan:::karl`) -->
-<!-- background-position: 50% 50% -->
-<!-- class: center, bottom, inverse -->
-
-<!-- # You only live once! -->
 
 ---
 
@@ -104,7 +97,7 @@ knitr::include_graphics(path = "images/cartridgeCasePrimer.png")
 ]
 
 .footnote[
-[1] [Images Source](http://www.firearmsid.com/A_CCIDImpres.htm)
+[Images Source](http://www.firearmsid.com/A_CCIDImpres.htm)
 ]
 
 ---
@@ -115,7 +108,7 @@ knitr::include_graphics(path = "images/primerBFImpressionDiagram.png")
 ```
 
 .footnote[
-[1] [Image Source](https://pdfs.semanticscholar.org/f2ab/001b090f2fcb79eff7a83b8aafeb81909944.pdf?_ga=2.260252488.476104195.1585242193-1176892230.1581362963)
+[Image Source](https://pdfs.semanticscholar.org/f2ab/001b090f2fcb79eff7a83b8aafeb81909944.pdf?_ga=2.260252488.476104195.1585242193-1176892230.1581362963)
 ]
 
 ---
@@ -123,9 +116,6 @@ knitr::include_graphics(path = "images/primerBFImpressionDiagram.png")
 
 ```{r echo=TRUE,eval=TRUE,strip.white=TRUE}
 fadul1.1 <- x3ptools::read_x3p("data/Fadul 1-1.x3p")
-```
-```{r eval=FALSE}
-x3ptools::image_x3p(fadul1.1)
 ```
 
 ```{r eval=TRUE,echo=FALSE,fig.align='center',fig.height=6}
@@ -143,7 +133,7 @@ fadul1.1 %>%
 
  - Some regions of cartridge case contain strong *ballistic signature*
  
- - Comparing entire scans may not highlight "valid correlation areas"
+ - Comparing entire scans may not highlight "valid correlation areas"<sup>[1]</sup>
  
  - Number of matching cells is a more granular similarity metric
 
@@ -152,7 +142,8 @@ knitr::include_graphics(path = "images/im1_im2_cellComparison.png")
 ```
 
 .footnote[
-[1] [Song (2013)](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=910868)
+<!-- [1] [Song (2013)](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=910868) -->
+[1] `r RefManageR::Citet(myBib,7)`
 ]
 
 ---
@@ -207,14 +198,14 @@ knitr::include_graphics("images/bfImpressionHighlighted.png")
 
 # 1. Identify BF impression height value
 
-- RANSAC (Random Sample Consensus) robust, iterative plane-fitting
+- RANSAC<sup>[1]</sup> (Random Sample Consensus) robust, iterative plane-fitting
     
 ```{r echo=FALSE,fig.retina=3,fig.align='center'}
 knitr::include_graphics("images/ransacMethod.png")
 ```
 
 .footnote[
-[1] [Image Source](https://bitesofcode.wordpress.com/tag/opencv/)
+[1] `r RefManageR::Citet(myBib,4)`, [Image Source](https://bitesofcode.wordpress.com/tag/opencv/)
 ]
 
 ---
@@ -333,6 +324,7 @@ fadul1.1$surface.matrix %>%
   imager::as.cimg() %>%
   plot()
 ```
+
 ---
 #3. Gaussian filtering
 
@@ -408,7 +400,7 @@ class: inverse, middle, center
 ---
 #Cross-correlation function
 
-- For real-valued, bivariate funtions $f(x,y),g(x,y)$, $x,y \in \mathbb{R}$, *cross-correlation function* (CCF) is
+- For real-valued, bivariate funtions $f(x,y),g(x,y)$ for $x,y \in \mathbb{R}$, *cross-correlation function* (CCF) is
 
 $$(f \star g)(x,y) := \int_{-\infty}^\infty \int_{-\infty}^\infty f(t,s) g(t + x,s + y)\ dtds$$
 
@@ -416,7 +408,7 @@ $$(f \star g)(x,y) := \int_{-\infty}^\infty \int_{-\infty}^\infty f(t,s) g(t + x
 
 --
 
-- **Discrete analogue:** For two discrete, bivariate functions $A[m,n], B[m,n]$, $m,n \in \mathbb{Z}$, the CCF is
+- **Discrete analogue:** For two discrete, bivariate functions $A[m,n], B[m,n]$ for $m,n \in \mathbb{Z}$, the CCF is
 
 $$(A \star B)[m,n] := \sum_{i = -\infty}^\infty \sum_{j = -\infty}^\infty A[i,j] B[i + m,j + n]$$
 
@@ -601,6 +593,7 @@ topResults
 ```
 ```{r echo=FALSE}
 topResults %>%
+  dplyr::arrange(cellNum) %>%
   knitr::kable(format = "html") %>%
   kableExtra::kable_styling() %>%
   kableExtra::scroll_box(height = "400px")
@@ -630,11 +623,11 @@ topResults %>%
 initialCMCs <- topResults %>%
   cmcR::cmcFilter(consensus_function = median,
                   ccf_thresh = .6,
-                  dx_thresh = 20,
+                  dx_thresh = 10,
                   theta_thresh = 3)
 ```
 ```{r eval=FALSE}
-initialCMCs #11 initial CMCs
+initialCMCs #8 initial CMCs
 ```
 
 ```{r echo=FALSE}
@@ -646,15 +639,17 @@ initialCMCs %>%
 ```
  
 ---
-
-
 # "Improved" method
 
 - Cell pair may be highly similar at true $\pmb{\beta}$, but happened to not vote for it
 
 --
 
-- Use extracted features more advantageously & perform comparisons in both "directions"
+- Use extracted features more advantageously & perform comparisons in both "directions" <sup>[1]</sup>
+
+.footnote[
+[1] `r RefManageR::Citet(myBib,6)`
+]
 
 --
 
@@ -667,7 +662,6 @@ initialCMCs %>%
 --
 
 - If modes are too far from each other, then cell pair likely not a match
-
 
 ---
 class: center
@@ -701,7 +695,7 @@ comparison2 <- cmcR::cellCCF_bothDirections(fadul1.1,fadul1.2,
 cmc <- comparison2 %>%
   cmcR::cmcFilter_improved(consensus_function = median,
                            ccf_thresh = .6,
-                           dx_thresh = 20,
+                           dx_thresh = 10,
                            theta_thresh = 3)
 ```
 
@@ -710,7 +704,7 @@ cmc <- comparison2 %>%
 # "Improved" method
 
 ```{r eval=FALSE}
-cmc$finalCMCs #27 final CMCs
+cmc$finalCMCs #24 final CMCs
 ```
 ```{r echo=FALSE}
 cmc$finalCMCs %>%
@@ -739,10 +733,90 @@ class: inverse, middle, center
 ---
 #Results & Discussion
 
-- Fadul (2011) cartridge case scans
-    - 63 known match pairs, 717 known non-match pairs
+- Fadul et al. cartridge case scans<sup>[1]</sup>
+    
+    - 63 known match (KM) pairs, 717 known non-match (KNM) pairs
+
+.footnote[
+[1] `r RefManageR::Citet(myBib,8)`
+]
+
+--
+
+- Goal: Separation between KM and KNM CMC count distributions
+
+--
 
 - Sensitivity analysis under various pre, inter, and post-processing conditions
+
+--
+
+- Promising conditions are those used in this presentation
+
+---
+
+```{r echo=FALSE,fig.align='center',dpi = 140}
+knitr::include_graphics("images/initialCMCdistributions.png")
+```
+
+```{r echo=FALSE,fig.align='center',dpi = 140}
+knitr::include_graphics("images/initialCMCroc.png")
+```
+
+---
+# Initially proposed method discussion
+
+- Perfect classification achieved under other classification thresholds<sup>[1]</sup>
+
+.footnote[
+[1] See appendix slides
+
+[2] `r RefManageR::Citet(myBib,3)`
+]
+
+--
+
+- Tong et al. achieve better separation of KM and KNM CMC distributions<sup>[2]</sup>
+
+ - Distance between max KNM count and min KM count
+ 
+ - More informative diagnostic metrics may exist
+
+---
+
+```{r echo=FALSE,fig.align='center',dpi = 140}
+knitr::include_graphics("images/finalCMCdistributions.png")
+```
+
+```{r echo=FALSE,fig.align='center',dpi = 140}
+knitr::include_graphics("images/finalCMCroc.png")
+```
+
+---
+#Improved method discussion
+
+- Improved method tends to assign higher CMC count to both KM and KNM
+
+- More "false positive" CMCs assigned to KNM than other authors<sup>[1]</sup>
+
+.footnote[
+[1] `r RefManageR::Citet(myBib,2)`
+]
+
+---
+# Results & Discussion
+
+- Perfect classification achieved using both methods
+
+ - Dependent on filtering thresholds
+
+--
+ 
+- Other authors able to achieve better separation
+
+--
+
+- Explore small changes to methodology (e.g., parameter tuning)
 
 ---
 class: inverse, middle, center
@@ -751,6 +825,14 @@ class: inverse, middle, center
 
 ---
 #Conclusions
+
+- Results indicate a close implementation of proposed CMC methods
+
+- Main issues related to separation between KM and KNM distributions
+
+- Tuning of pre, inter, and post-processing conditions will undoubtedly lead to results closer to those of other authors
+
+- Conditions used in this presentation are current `cmcR` package defaults
 
 ---
 #Future Work
@@ -763,12 +845,41 @@ class: inverse, middle, center
 
 - **Longer-term:**
 
-    - Improvements to CMC methodology (e.g., dealing with `NA` values)
+    - CMC method improvments:
+     - techniques for dealing with `NA`s
+     - better classification diagnostics
+     - implementation of closed-source methods
 
-    - Principled approach to quantifying and/or modelling similarity
+    - Principled approach to quantifying and/or modeling similarity
 
 ---
 #References
+
+```{r, load_refs, include=FALSE, cache=FALSE}
+RefManageR::BibOptions(check.entries = FALSE,
+           bib.style = "authoryear",
+           cite.style = "alphabetic",
+           style = "markdown",
+           max.names = 2,
+           no.print.fields = c("urldate","file","issn","url","keywords","language","abstract"),
+           hyperlink = FALSE,
+           dashed = FALSE)
+myBib <- RefManageR::ReadBib("./ref.bib", check = FALSE)
+```
+
+```{r refs1, echo=FALSE, results="asis"}
+RefManageR::PrintBibliography(myBib,end = 4)
+```
+
+---
+#References (cont'd.)
+
+```{r refs2, echo=FALSE, results="asis"}
+RefManageR::NoCite(myBib,5)
+
+RefManageR::PrintBibliography(myBib,start = 5)
+```
+
 
 ---
 
@@ -780,3 +891,48 @@ class: center, middle
 class: center, middle
 
 # Thank you!
+
+---
+class: center, inverse, middle
+
+# Appendix
+
+---
+# Initially proposed method perfect classif.
+
+```{r echo=FALSE,fig.align='center',dpi = 170}
+knitr::include_graphics("images/initialCMCdistributions_perfectClassification.png")
+```
+
+```{r echo=FALSE,fig.align='center',dpi = 170}
+knitr::include_graphics("images/initialCMCroc_perfectClassification.png")
+```
+
+---
+# Initial method CMC dist'n sensitivity
+
+```{r echo=FALSE,fig.align='center'}
+knitr::include_graphics("images/initialCMCResidualsBP16_250plot_corr30-90_trans10-30_noAUC.png",dpi = 500)
+```
+
+---
+# Initial method ROC curve sensitivity
+
+```{r echo=FALSE,fig.align='center'}
+knitr::include_graphics("images/roc_initialCMC_residualsBP16-250_corr30-90_trans10-30.png",dpi = 500)
+```
+
+
+---
+# Improved method CMC dist'n sensitivity
+
+```{r echo=FALSE,fig.align='center'}
+knitr::include_graphics("images/cmcResidualsBP16_250_corr30-90_trans10-30_noAUC.png",dpi = 500)
+```
+
+---
+# Improved method ROC curve sensitivity
+
+```{r echo=FALSE,fig.align='center'}
+knitr::include_graphics("images/roc_residualsBP16-250.png",dpi = 500)
+```
