@@ -58,6 +58,19 @@ myBib <- RefManageR::ReadBib("./ref.bib", check = FALSE)
  
  - Conclusion and Future Work
 
+???
+- This main goal of this project was to implement the Congruent Matching Cells method as originally proposed by John Song in 2013 as well as one improvement to the method proposed by Tong and others in 2015. The implementation is provided in the form of the `cmcR` package, currently available for download off of my Github.
+
+- My plan for this presentation is to:
+ - First introduce the problem and provide some exposition about the CMC method that will be expanded upon later
+ - Discuss pre-processing steps that need to be performed on the cartridge case data in order to make the method work properly
+ - Talk about the features we extract from the data for use in the method
+ - Talk deeper about how we use the extracted features to make classification of matching vs. non-matching cartridge cases
+ - Discuss results obtained from applying the method to commonly used cartridge case data in the CMC literature
+ - Provide final conclusions and discuss future work
+
+- While discussing various methods, I will be referring to associated functions in the `cmcR` package throughout the presentation. 
+
 ---
 class: inverse, center, middle
 
@@ -89,6 +102,12 @@ knitr::include_graphics(path = "images/cartridgeCaseDiagram.png",dpi = 200)
 [Image Source](https://commons.wikimedia.org/wiki/File:Bulletfixed.PNG)
 ]
 
+???
+- First, it's important to understand some common terminology.
+- The diagram shows the entirety of what we might colloquially refer to as a "bullet." However, the bullet is actually only the projectile stored at the tip of the overall cartridge.
+- We are most interested in the base of the cartridge case. In particular, the area around the primer.
+- The primer is the region that is struck by the firing pin during the firing process.
+
 ---
 
 # Breech face impressions
@@ -113,6 +132,14 @@ knitr::include_graphics(path = "images/cartridgeCasePrimer.png")
 [Images Source](http://www.firearmsid.com/A_CCIDImpres.htm)
 ]
 
+???
+- During the firing process, as a bullet is propelled down the barrel of a firearm, the rest of the cartridge is sent backwards in response.
+- The base of the cartridge case slams against the back wall, referred to as the breech face, of the firearm's barrel.
+- Any markings left on the breech face due to, e.g., the manufacturing process can be "stamped" into the metal of the cartridge case base and primer.
+- The two images illustrate this. The left image shows the breech face of a 12 gauge shotgun. We can clearly see some markings on this breech face.
+ - The right image shows the primer of a spent cartridge case fired from this 12 gauge shotgun. We can see that some of the markings of the breech face have been imprinted onto this cartridge case.
+- It has long been believed that a cartridge case can be matched to the firearm from which it was fired based on these breech face impressions. In particular, we may have a "questioned" cartridge case of unknown source that we can compare to a known-source cartridge case.
+
 ---
 #Breech face vs. firing pin impressions
 
@@ -124,8 +151,13 @@ knitr::include_graphics(path = "images/primerBFImpressionDiagram.png")
 [Image Source](https://pdfs.semanticscholar.org/f2ab/001b090f2fcb79eff7a83b8aafeb81909944.pdf?_ga=2.260252488.476104195.1585242193-1176892230.1581362963)
 ]
 
+???
+- To match two cartridge cases, we are interested in comparing their breech face impressions.
+- The image here shows that the breech face impression region of interest is actually rather small compared to the overall cartridge case base.
+- Additionally, the impression left by the firing pin striking the primer is contained by the breech face impression region.
+- Classifying matches based on markings left by the firing pin impression has also been explored. However, firing pin impressions are not the focus of the Congruent Matching Cells method.
 ---
-# Cartridge Case Surface Matrices
+# Cartridge case surface matrices
 
 ```{r echo=TRUE,eval=TRUE,strip.white=TRUE}
 fadul1.1 <- x3ptools::read_x3p("data/Fadul 1-1.x3p")
@@ -142,6 +174,17 @@ fadul1.1 %>%
   imager::as.cimg() %>%
   plot()
 ```
+
+.footnote[
+[Data Source](https://tsapps.nist.gov/NRBTD/Studies/Studies/Details/e7a8aab8-8d5a-44ac-b2be-f0de7c2ca505?nm=True&mt=1&m=3&sp=1)
+]
+
+???
+- Cartridge case data typically come in two forms: optical 2D images and 3D topographical scans.
+- It has been demonstrated by a number of authors that the 3D scans are easier to classify as matches vs. non-matches than the 2D images. The `cmcR` package was written to interface with the topographical scans.
+- Many of these cartridge case scans are openly available from the NIST Ballistics and Toolmarks Research Database. The data are commonly stored in an XML 3D Surface Profile or .x3p file format. - The cartridge case data are represented in the .x3p file via a *surface matrix*. This is a single spatially-ordered matrix whose elements represent height values in micrometers or *microns* at a particular location. It is these surface matrices with which we work directly when classifying matches.
+- The `x3ptools` package in `R` can be used to interface with  .x3p files. The code shown will read an .x3p file into `R` and display it in 3D using a local `rgl` device. 
+- The plot shown, while not the output of the `image_x3p` function, shows the contents of the surface matrix where height values are mapped to grayscale. Note that lighter colored pixels represent higher values than darker pixels. 
 
 ---
 
