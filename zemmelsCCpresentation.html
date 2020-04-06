@@ -35,6 +35,8 @@ pre {
 
 
 
+
+
 #Overview
 
  - Motivation and Background Information
@@ -82,9 +84,10 @@ class: inverse, center, middle
 
 # Breech face impressions
 
- - Cartridge case slams into back wall (i.e., *breech face*) of barrel
+ - During firing process, cartridge case hits back wall (*breech face*) of barrel
 
  - Contact often "stamps" breech face markings onto cartridge case primer/base
+ 
 .pull-left[
 &lt;img src="images/firearmBreechFace.png" width="400" height="300" style="display: block; margin: auto 0 auto auto;" /&gt;
 ]
@@ -114,7 +117,11 @@ class: inverse, center, middle
 fadul1.1 &lt;- x3ptools::read_x3p("data/Fadul 1-1.x3p")
 ```
 
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-6-1.png" style="display: block; margin: auto;" /&gt;
+```r
+x3ptools::image_x3p(fadul1.1)
+```
+
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-7-1.png" style="display: block; margin: auto;" /&gt;
 
 ---
 
@@ -148,11 +155,11 @@ fadul1.1 &lt;- x3ptools::read_x3p("data/Fadul 1-1.x3p")
 
 - We expect `\(\pmb{\beta}_i = \pmb{\beta}, \forall i = 1,...,n\)` for true matches
  
-- We can realistically only determine if `\(\hat{\pmb{\beta}}_i \approx \hat{\pmb{\beta}}_j, i \neq j\)`
+- It's much easier to determine whether `\(\hat{\pmb{\beta}}_i \approx \hat{\pmb{\beta}}_j, i \neq j\)`
  
 --
  
-- Use estimated alignment parameters as features to classify matches 
+- Use estimated alignment parameters, `\(\hat{\pmb{\beta}}_i\)`, as features to classify matches 
 
 ---
 #Congruent Matching Cells method
@@ -216,7 +223,7 @@ fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
 
 - Note: relies on randomly sampling surface matrix, so results may differ between uses
 
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-12-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-13-1.png" style="display: block; margin: auto;" /&gt;
 
 ---
 #2. Removing "minutiae"
@@ -228,45 +235,61 @@ fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
 fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
   cmcR::preProcess_cropWS(croppingThresh = 2)
 ```
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-14-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-15-1.png" style="display: block; margin: auto;" /&gt;
 
-- Remove observations within firing pin impression circle
 
 ---
-#2. Removing "minutiae" - Hough Transform
+#2. Removing "minutiae" - Hough transform
 
 - Need to "detect" firing pin impression circle in arbitrary scan
 
-    - Note: Glocks have rectangular firing pins, so doesn't necessarily generalize
+    &lt;!-- - Note: Glocks have rectangular firing pins, so doesn't necessarily generalize --&gt;
     
-- Hough transform is a voting-based shape detection technique
+- Hough transform&lt;sup&gt;[1]&lt;/sup&gt; voting-based shape detection technique
 
 &lt;img src="images/houghTransformCircle.jpg" width="1703" style="display: block; margin: auto;" /&gt;
 
----
-#2. Removing "minutiae" - Hough Transform
+.footnote[
+[1] Hough [Hou62], [Image Source](https://commons.wikimedia.org/wiki/File:Circle\_Hough_transform\_of\_four\_points\_on\_a\_circle.jpg)
+]
 
-- Need to estimate radius for arbitrary scan
+---
+#2. Removing "minutiae" - Hough transform
+
+- Hough transform detects circle center given a radius
 
 - Count number of non-`NA` observations per row/column and find modes
 
 &lt;img src="images/rowSumRadiusEstim.png" width="294" style="display: block; margin: auto;" /&gt;
 
-
+???
+- The Hough transform methom will detect the center of a circle in a matrix given a radius
+ - The difficulty of this is that we don't *know* the radius ahead of time. Thus, it needs to be estimated
+- To estimate the radius, we can count the number of non-NA (gray) elements per row/column of the matrix and determine when this count attains modes.
+ - The image shown illustrates how the non-NA count changes with the rows/columns of the matrix.
+ - We actually consider a moving average-smoothed version of the non-NA count to identify the modes.
+ - The distance between the two modes provides an estimate for the diameter, and thus the radius.
 ---
-#2. Removing "minutiae" - Hough Transform
+#2. Removing "minutiae" - Hough transform
 
 - Estimate radius values for various rotations of scan
 
 .pull-left[
+.center[All "votes"]
 ![](images/accumulator.gif)&lt;!-- --&gt;
 ]
 .pull-right[
+.center[Most popular "vote"]
 ![](images/houghTransformFilter.gif)&lt;!-- --&gt;
 ]
 
+???
+- We can obtain a number of estimates for the radius using the method described on the previous slide.
+- We use each radius estimate to fit a Hough transform.
+- Each frame of the gif on the left represents the "votes" cast for different centers in the image for a particular radius value
+- Each frame of the gif on the right shows the location of the estimated firing pin circle - in particular which pixels are filtered out
 ---
-#2. Removing "minutiae" - Hough Transform
+#2. Removing "minutiae" - Hough transform
 
 - Each radius value assigned "score" indicating strength of evidence
 
@@ -274,15 +297,25 @@ fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
 
 &lt;img src="images/houghScorePlot.png" width="676" style="display: block; margin: auto;" /&gt;
 
+???
+- We need some way to ultimately decide on a particular firing pin circle based on the estimates
+- The Hough transform has a normalized score computed from the number of votes cast for a particular center
+ - We can use these scores to quantify how "confident" in a particular center the Hough transform is
+ - It's natural to take the center with the largest Hough score as the best estimate for a particular radius
+- The max Hough score varies considerably depending on the radius considered.
+ - The plot shows how the max Hough score varies by radius value
+ - We can identify radius values where the max Hough score is "stable" and consistently high
+ - The plot shows a range of values between radii 201 and 206 that have stable, high max Hough scores
+ - We can then choose, say, the middle of this range of values as the final radius estimate
 ---
-#2. Removing "minutiae" - Hough Transform
+#2. Removing "minutiae" - Hough transform
 
 
 ```r
 fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
   cmcR::preProcess_removeFPCircle() 
 ```
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-21-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-22-1.png" style="display: block; margin: auto;" /&gt;
 
 ---
 #3. Gaussian filtering
@@ -334,7 +367,7 @@ fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
                                wavelength = c(16,250),
                                filtertype = "bp")
 ```
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-23-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-24-1.png" style="display: block; margin: auto;" /&gt;
 
 
 ---
@@ -360,8 +393,6 @@ class: inverse, middle, center
 
 `$$(f \star g)(x,y) := \int_{-\infty}^\infty \int_{-\infty}^\infty f(t,s) g(t + x,s + y)\ dtds$$`
 
-- Note: equivalent to *convolution* in real-valued case
-
 --
 
 - **Discrete analogue:** For two discrete, bivariate functions `\(A[m,n], B[m,n]\)` for `\(m,n \in \mathbb{Z}\)`, the CCF is
@@ -373,13 +404,13 @@ class: inverse, middle, center
 - Think of `\(A[m,n]\)` as `\(m\)`th row and `\(n\)`th column of matrix `\(A\)`
 
 ---
-#Cross-Correlation theorem
+#Cross-correlation theorem
 
 - Calculating CCF by definition is computationally infeasible
 
 --
 
-- By the Cross-Correlation theorem,
+- By the Cross-correlation theorem,
 `$$A \star B = \mathcal{F}^{-1}\left(\overline{\mathcal{F}(A)} \cdot \mathcal{F}(B)\right)$$`
  - `\(\mathcal{F}(\cdot)\)` denotes Fourier transform
  
@@ -391,7 +422,11 @@ class: inverse, middle, center
 
 --
 
-- *Fast Fourier Transform* drastically improves computational efficiency
+- *Fast Fourier Transform* drastically improves computational efficiency&lt;sup&gt;[1]&lt;/sup&gt;
+
+.footnote[
+[1] Tai and Eddy [TE18]
+]
 
 ---
 #Aligning by CCF
@@ -1595,14 +1630,14 @@ cmc$finalCMCs #24 final CMCs
 cmcR::cmcPlot(fadul1.1,cmcDF = cmc$initialCMCs[[1]],method = "ggplot2")
 ```
 
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-44-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-45-1.png" style="display: block; margin: auto;" /&gt;
 
 
 ```r
 cmcR::cmcPlot(fadul1.1,cmcDF = cmc$finalCMCs,method = "ggplot2")
 ```
 
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-45-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-46-1.png" style="display: block; margin: auto;" /&gt;
 
 
 ---
@@ -1634,10 +1669,11 @@ class: inverse, middle, center
 - Promising conditions are those used in this presentation
 
 ---
+#Initially proposed method results
 
-&lt;img src="images/initialCMCdistributions.png" width="480" style="display: block; margin: auto;" /&gt;
+&lt;img src="images/initialCMCdistributions.png" width="395" style="display: block; margin: auto;" /&gt;
 
-&lt;img src="images/initialCMCroc.png" width="480" style="display: block; margin: auto;" /&gt;
+&lt;img src="images/initialCMCroc.png" width="395" style="display: block; margin: auto;" /&gt;
 
 ---
 # Initially proposed method discussion
@@ -1659,10 +1695,11 @@ class: inverse, middle, center
  - More informative diagnostic metrics may exist
 
 ---
+#Improved method results
 
-&lt;img src="images/finalCMCdistributions.png" width="480" style="display: block; margin: auto;" /&gt;
+&lt;img src="images/finalCMCdistributions.png" width="395" style="display: block; margin: auto;" /&gt;
 
-&lt;img src="images/finalCMCroc.png" width="480" style="display: block; margin: auto;" /&gt;
+&lt;img src="images/finalCMCroc.png" width="395" style="display: block; margin: auto;" /&gt;
 
 ---
 #Improved method discussion
@@ -1726,54 +1763,49 @@ class: inverse, middle, center
 
 ---
 #References
-
-
-
-&lt;a name=bib-chen_convergence_2017&gt;&lt;/a&gt;[Chen, Z, J. Song, et
-al.](#cite-chen_convergence_2017) (2017). "A convergence algorithm for
-correlation of breech face images based on the congruent matching cells
-(CMC) method". In: _Forensic Science International_ 280, pp. 213-223. DOI:
+Chen, Z, J. Song, et al. (2017). "A convergence algorithm for
+correlation of breech face images based on the congruent
+matching cells (CMC) method". In: _Forensic Science
+International_ 280, pp. 213-223. DOI:
 [10.1016/j.forsciint.2017.08.033](https://doi.org/10.1016%2Fj.forsciint.2017.08.033).
 
-&lt;a name=bib-fadul_empirical_nodate&gt;&lt;/a&gt;[Fadul, T., G. Hernandez, et
-al.](#cite-fadul_empirical_nodate) (2011). _An Empirical Study to Improve
-the Scientific Foundation of Forensic Firearm and Tool Mark Identification
-Utilizing 10 Consecutively Manufactured Slides_.
+Fadul, T., G. Hernandez, et al. (2011). _An Empirical Study to
+Improve the Scientific Foundation of Forensic Firearm and Tool
+Mark Identification Utilizing 10 Consecutively Manufactured
+Slides_.
 
-&lt;a name=bib-ransac&gt;&lt;/a&gt;[Fischler, M. A. and R. C. Bolles](#cite-ransac)
-(1981). "Random Sample Consensus: A Paradigm for Model Fitting with
-Applications to Image Analysis and Automated Cartography". In: _Commun. ACM_
+Fischler, M. A. and R. C. Bolles (1981). "Random Sample
+Consensus: A Paradigm for Model Fitting with Applications to
+Image Analysis and Automated Cartography". In: _Commun. ACM_
 24.6, p. 381â€“395. DOI:
 [10.1145/358669.358692](https://doi.org/10.1145%2F358669.358692).
 
-Fung, W. K. (1995). "Diagnostics in Linear Discriminant Analysis". In:
-_Journal of the American Statistical Association_ 90.431, pp. 952-956.
+Hough, P. (1962). _Method and means for recognizing complex
+patterns_. U.S. Patent 3,069,654
 
 ---
 #References (cont'd.)
 
-&lt;a name=bib-song_proposed_2013&gt;&lt;/a&gt;[Song, J.](#cite-song_proposed_2013)
-(2013). "Proposed "NIST Ballistics Identification System (NBIS)" Based on 3D
-Topography Measurements on Correlation Cells". In: _American Firearm and
-Tool Mark Examiners Journal_ 45.2, p. 11.
+Song, J. (2013). "Proposed "NIST Ballistics Identification
+System (NBIS)" Based on 3D Topography Measurements on
+Correlation Cells". In: _American Firearm and Tool Mark
+Examiners Journal_ 45.2, p. 11.
 
-Tai, X. H. and W. F. Eddy (2018). "A Fully Automatic Method for Comparing
-Cartridge Case Images,". In: _Journal of Forensic Sciences_ 63.2, pp.
-440-448. DOI:
+Tai, X. H. and W. F. Eddy (2018). "A Fully Automatic Method for
+Comparing Cartridge Case Images,". In: _Journal of Forensic
+Sciences_ 63.2, pp. 440-448. DOI:
 [10.1111/1556-4029.13577](https://doi.org/10.1111%2F1556-4029.13577).
 
-&lt;a name=bib-tong_improved_2015&gt;&lt;/a&gt;[Tong, M, J. Song, et
-al.](#cite-tong_improved_2015) (2015). "An Improved Algorithm of Congruent
-Matching Cells (CMC) Method for Firearm Evidence Identifications". In:
-_Journal of Research of the National Institute of Standards and Technology_
-120, p. 102. DOI:
+Tong, M, J. Song, et al. (2015). "An Improved Algorithm of
+Congruent Matching Cells (CMC) Method for Firearm Evidence
+Identifications". In: _Journal of Research of the National
+Institute of Standards and Technology_ 120, p. 102. DOI:
 [10.6028/jres.120.008](https://doi.org/10.6028%2Fjres.120.008).
 
-&lt;a name=bib-tong_fired_2014&gt;&lt;/a&gt;[Tong, M, J. Song, et
-al.](#cite-tong_fired_2014) (2014). "Fired Cartridge Case Identification
-Using Optical Images and the Congruent Matching Cells (CMC) Method". In:
-_Journal of Research of the National Institute of Standards and Technology_
-119, p. 575. DOI:
+Tong, M, J. Song, et al. (2014). "Fired Cartridge Case
+Identification Using Optical Images and the Congruent Matching
+Cells (CMC) Method". In: _Journal of Research of the National
+Institute of Standards and Technology_ 119, p. 575. DOI:
 [10.6028/jres.119.023](https://doi.org/10.6028%2Fjres.119.023).
 
 

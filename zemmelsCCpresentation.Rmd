@@ -32,6 +32,18 @@ set.seed(3262020)
 library(magrittr,cmcR)
 ```
 
+```{r, load_refs, include=FALSE, cache=FALSE}
+RefManageR::BibOptions(check.entries = FALSE,
+           bib.style = "authoryear",
+           cite.style = "alphabetic",
+           style = "markdown",
+           max.names = 2,
+           no.print.fields = c("urldate","file","issn","url","keywords","language","abstract"),
+           hyperlink = FALSE,
+           dashed = FALSE)
+myBib <- RefManageR::ReadBib("./ref.bib", check = FALSE)
+```
+
 #Overview
 
  - Motivation and Background Information
@@ -81,9 +93,10 @@ knitr::include_graphics(path = "images/cartridgeCaseDiagram.png",dpi = 200)
 
 # Breech face impressions
 
- - Cartridge case slams into back wall (i.e., *breech face*) of barrel
+ - During firing process, cartridge case hits back wall (*breech face*) of barrel
 
  - Contact often "stamps" breech face markings onto cartridge case primer/base
+ 
 .pull-left[
 ```{r echo=FALSE,eval=TRUE,fig.align='right',out.height=300,out.width=400}
 knitr::include_graphics(path = "images/firearmBreechFace.png")
@@ -116,6 +129,9 @@ knitr::include_graphics(path = "images/primerBFImpressionDiagram.png")
 
 ```{r echo=TRUE,eval=TRUE,strip.white=TRUE}
 fadul1.1 <- x3ptools::read_x3p("data/Fadul 1-1.x3p")
+```
+```{r eval=FALSE}
+x3ptools::image_x3p(fadul1.1)
 ```
 
 ```{r eval=TRUE,echo=FALSE,fig.align='center',fig.height=6}
@@ -161,11 +177,11 @@ knitr::include_graphics(path = "images/im1_im2_cellComparison.png")
 
 - We expect $\pmb{\beta}_i = \pmb{\beta}, \forall i = 1,...,n$ for true matches
  
-- We can realistically only determine if $\hat{\pmb{\beta}}_i \approx \hat{\pmb{\beta}}_j, i \neq j$
+- It's much easier to determine whether $\hat{\pmb{\beta}}_i \approx \hat{\pmb{\beta}}_j, i \neq j$
  
 --
  
-- Use estimated alignment parameters as features to classify matches 
+- Use estimated alignment parameters, $\hat{\pmb{\beta}}_i$, as features to classify matches 
 
 ---
 #Congruent Matching Cells method
@@ -258,25 +274,28 @@ fadul1.1$surface.matrix %>%
   plot()
 ```
 
-- Remove observations within firing pin impression circle
 
 ---
-#2. Removing "minutiae" - Hough Transform
+#2. Removing "minutiae" - Hough transform
 
 - Need to "detect" firing pin impression circle in arbitrary scan
 
-    - Note: Glocks have rectangular firing pins, so doesn't necessarily generalize
+    <!-- - Note: Glocks have rectangular firing pins, so doesn't necessarily generalize -->
     
-- Hough transform is a voting-based shape detection technique
+- Hough transform<sup>[1]</sup> voting-based shape detection technique
 
 ```{r echo=FALSE,fig.align='center'}
 knitr::include_graphics("images/houghTransformCircle.jpg")
 ```
 
----
-#2. Removing "minutiae" - Hough Transform
+.footnote[
+[1] `r RefManageR::Citet(myBib,9)`, [Image Source](https://commons.wikimedia.org/wiki/File:Circle\_Hough_transform\_of\_four\_points\_on\_a\_circle.jpg)
+]
 
-- Need to estimate radius for arbitrary scan
+---
+#2. Removing "minutiae" - Hough transform
+
+- Hough transform detects circle center given a radius
 
 - Count number of non-`NA` observations per row/column and find modes
 
@@ -284,25 +303,38 @@ knitr::include_graphics("images/houghTransformCircle.jpg")
 knitr::include_graphics("images/rowSumRadiusEstim.png")
 ```
 
-
+???
+- The Hough transform methom will detect the center of a circle in a matrix given a radius
+ - The difficulty of this is that we don't *know* the radius ahead of time. Thus, it needs to be estimated
+- To estimate the radius, we can count the number of non-NA (gray) elements per row/column of the matrix and determine when this count attains modes.
+ - The image shown illustrates how the non-NA count changes with the rows/columns of the matrix.
+ - We actually consider a moving average-smoothed version of the non-NA count to identify the modes.
+ - The distance between the two modes provides an estimate for the diameter, and thus the radius.
 ---
-#2. Removing "minutiae" - Hough Transform
+#2. Removing "minutiae" - Hough transform
 
 - Estimate radius values for various rotations of scan
 
 .pull-left[
+.center[All "votes"]
 ```{r echo=FALSE,cache=TRUE}
 knitr::include_graphics("images/accumulator.gif")
 ```
 ]
 .pull-right[
+.center[Most popular "vote"]
 ```{r echo=FALSE,cache=TRUE}
 knitr::include_graphics("images/houghTransformFilter.gif")
 ```
 ]
 
+???
+- We can obtain a number of estimates for the radius using the method described on the previous slide.
+- We use each radius estimate to fit a Hough transform.
+- Each frame of the gif on the left represents the "votes" cast for different centers in the image for a particular radius value
+- Each frame of the gif on the right shows the location of the estimated firing pin circle - in particular which pixels are filtered out
 ---
-#2. Removing "minutiae" - Hough Transform
+#2. Removing "minutiae" - Hough transform
 
 - Each radius value assigned "score" indicating strength of evidence
 
@@ -312,8 +344,18 @@ knitr::include_graphics("images/houghTransformFilter.gif")
 knitr::include_graphics("images/houghScorePlot.png")
 ```
 
+???
+- We need some way to ultimately decide on a particular firing pin circle based on the estimates
+- The Hough transform has a normalized score computed from the number of votes cast for a particular center
+ - We can use these scores to quantify how "confident" in a particular center the Hough transform is
+ - It's natural to take the center with the largest Hough score as the best estimate for a particular radius
+- The max Hough score varies considerably depending on the radius considered.
+ - The plot shows how the max Hough score varies by radius value
+ - We can identify radius values where the max Hough score is "stable" and consistently high
+ - The plot shows a range of values between radii 201 and 206 that have stable, high max Hough scores
+ - We can then choose, say, the middle of this range of values as the final radius estimate
 ---
-#2. Removing "minutiae" - Hough Transform
+#2. Removing "minutiae" - Hough transform
 
 ```{r cache=TRUE}
 fadul1.1$surface.matrix <- fadul1.1$surface.matrix %>%
@@ -404,8 +446,6 @@ class: inverse, middle, center
 
 $$(f \star g)(x,y) := \int_{-\infty}^\infty \int_{-\infty}^\infty f(t,s) g(t + x,s + y)\ dtds$$
 
-- Note: equivalent to *convolution* in real-valued case
-
 --
 
 - **Discrete analogue:** For two discrete, bivariate functions $A[m,n], B[m,n]$ for $m,n \in \mathbb{Z}$, the CCF is
@@ -417,13 +457,13 @@ $$(A \star B)[m,n] := \sum_{i = -\infty}^\infty \sum_{j = -\infty}^\infty A[i,j]
 - Think of $A[m,n]$ as $m$th row and $n$th column of matrix $A$
 
 ---
-#Cross-Correlation theorem
+#Cross-correlation theorem
 
 - Calculating CCF by definition is computationally infeasible
 
 --
 
-- By the Cross-Correlation theorem,
+- By the Cross-correlation theorem,
 $$A \star B = \mathcal{F}^{-1}\left(\overline{\mathcal{F}(A)} \cdot \mathcal{F}(B)\right)$$
  - $\mathcal{F}(\cdot)$ denotes Fourier transform
  
@@ -435,7 +475,11 @@ $$A \star B = \mathcal{F}^{-1}\left(\overline{\mathcal{F}(A)} \cdot \mathcal{F}(
 
 --
 
-- *Fast Fourier Transform* drastically improves computational efficiency
+- *Fast Fourier Transform* drastically improves computational efficiency<sup>[1]</sup>
+
+.footnote[
+[1] `r RefManageR::Citet(myBib,5)`
+]
 
 ---
 #Aligning by CCF
@@ -754,12 +798,13 @@ class: inverse, middle, center
 - Promising conditions are those used in this presentation
 
 ---
+#Initially proposed method results
 
-```{r echo=FALSE,fig.align='center',dpi = 140}
+```{r echo=FALSE,fig.align='center',dpi = 170}
 knitr::include_graphics("images/initialCMCdistributions.png")
 ```
 
-```{r echo=FALSE,fig.align='center',dpi = 140}
+```{r echo=FALSE,fig.align='center',dpi = 170}
 knitr::include_graphics("images/initialCMCroc.png")
 ```
 
@@ -783,12 +828,13 @@ knitr::include_graphics("images/initialCMCroc.png")
  - More informative diagnostic metrics may exist
 
 ---
+#Improved method results
 
-```{r echo=FALSE,fig.align='center',dpi = 140}
+```{r echo=FALSE,fig.align='center',dpi = 170}
 knitr::include_graphics("images/finalCMCdistributions.png")
 ```
 
-```{r echo=FALSE,fig.align='center',dpi = 140}
+```{r echo=FALSE,fig.align='center',dpi = 170}
 knitr::include_graphics("images/finalCMCroc.png")
 ```
 
@@ -854,19 +900,6 @@ class: inverse, middle, center
 
 ---
 #References
-
-```{r, load_refs, include=FALSE, cache=FALSE}
-RefManageR::BibOptions(check.entries = FALSE,
-           bib.style = "authoryear",
-           cite.style = "alphabetic",
-           style = "markdown",
-           max.names = 2,
-           no.print.fields = c("urldate","file","issn","url","keywords","language","abstract"),
-           hyperlink = FALSE,
-           dashed = FALSE)
-myBib <- RefManageR::ReadBib("./ref.bib", check = FALSE)
-```
-
 ```{r refs1, echo=FALSE, results="asis"}
 RefManageR::PrintBibliography(myBib,end = 4)
 ```
@@ -875,8 +908,6 @@ RefManageR::PrintBibliography(myBib,end = 4)
 #References (cont'd.)
 
 ```{r refs2, echo=FALSE, results="asis"}
-RefManageR::NoCite(myBib,5)
-
 RefManageR::PrintBibliography(myBib,start = 5)
 ```
 
