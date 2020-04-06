@@ -51,6 +51,19 @@ pre {
  
  - Conclusion and Future Work
 
+???
+- This main goal of this project was to implement the Congruent Matching Cells method as originally proposed by John Song in 2013 as well as one improvement to the method proposed by Tong and others in 2015. The implementation is provided in the form of the `cmcR` package, currently available for download off of my Github.
+
+- My plan for this presentation is to:
+ - First introduce the problem and provide some exposition about the CMC method that will be expanded upon later
+ - Discuss pre-processing steps that need to be performed on the cartridge case data in order to make the method work properly
+ - Talk about the features we extract from the data for use in the method
+ - Talk deeper about how we use the extracted features to make classification of matching vs. non-matching cartridge cases
+ - Discuss results obtained from applying the method to commonly used cartridge case data in the CMC literature
+ - Provide final conclusions and discuss future work
+
+- While discussing various methods, I will be referring to associated functions in the `cmcR` package throughout the presentation. 
+
 ---
 class: inverse, center, middle
 
@@ -80,6 +93,12 @@ class: inverse, center, middle
 [Image Source](https://commons.wikimedia.org/wiki/File:Bulletfixed.PNG)
 ]
 
+???
+- First, it's important to understand some common terminology.
+- The diagram shows the entirety of what we might colloquially refer to as a "bullet." However, the bullet is actually only the projectile stored at the tip of the overall cartridge.
+- We are most interested in the base of the cartridge case. In particular, the area around the primer.
+- The primer is the region that is struck by the firing pin during the firing process.
+
 ---
 
 # Breech face impressions
@@ -100,6 +119,14 @@ class: inverse, center, middle
 [Images Source](http://www.firearmsid.com/A_CCIDImpres.htm)
 ]
 
+???
+- During the firing process, as a bullet is propelled down the barrel of a firearm, the rest of the cartridge is sent backwards in response.
+- The base of the cartridge case slams against the back wall, referred to as the breech face, of the firearm's barrel.
+- Any markings left on the breech face due to, e.g., the manufacturing process can be "stamped" into the metal of the cartridge case base and primer.
+- The two images illustrate this. The left image shows the breech face of a 12 gauge shotgun. We can clearly see some markings on this breech face.
+ - The right image shows the primer of a spent cartridge case fired from this 12 gauge shotgun. We can see that some of the markings of the breech face have been imprinted onto this cartridge case.
+- It has long been believed that a cartridge case can be matched to the firearm from which it was fired based on these breech face impressions. In particular, we may have a "questioned" cartridge case of unknown source that we can compare to a known-source cartridge case.
+
 ---
 #Breech face vs. firing pin impressions
 
@@ -109,19 +136,32 @@ class: inverse, center, middle
 [Image Source](https://pdfs.semanticscholar.org/f2ab/001b090f2fcb79eff7a83b8aafeb81909944.pdf?_ga=2.260252488.476104195.1585242193-1176892230.1581362963)
 ]
 
+???
+- To match two cartridge cases, we are interested in comparing their breech face impressions.
+- The image here shows that the breech face impression region of interest is actually rather small compared to the overall cartridge case base.
+- Additionally, the impression left by the firing pin striking the primer is contained by the breech face impression region.
+- Classifying matches based on markings left by the firing pin impression has also been explored. However, firing pin impressions are not the focus of the Congruent Matching Cells method.
 ---
-# Cartridge Case Surface Matrices
+# Cartridge case surface matrices
 
 
 ```r
 fadul1.1 &lt;- x3ptools::read_x3p("data/Fadul 1-1.x3p")
 ```
 
-```r
-x3ptools::image_x3p(fadul1.1)
-```
 
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-7-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-104-1.png" style="display: block; margin: auto;" /&gt;
+
+.footnote[
+[Data Source](https://tsapps.nist.gov/NRBTD/Studies/Studies/Details/e7a8aab8-8d5a-44ac-b2be-f0de7c2ca505?nm=True&amp;mt=1&amp;m=3&amp;sp=1)
+]
+
+???
+- Cartridge case data typically come in two forms: optical 2D images and 3D topographical scans.
+- It has been demonstrated by a number of authors that the 3D scans are easier to classify as matches vs. non-matches than the 2D images. The `cmcR` package was written to interface with the topographical scans.
+- Many of these cartridge case scans are openly available from the NIST Ballistics and Toolmarks Research Database. The data are commonly stored in an XML 3D Surface Profile or .x3p file format. - The cartridge case data are represented in the .x3p file via a *surface matrix*. This is a single spatially-ordered matrix whose elements represent height values in micrometers or *microns* at a particular location. It is these surface matrices with which we work directly when classifying matches.
+- The `x3ptools` package in `R` can be used to interface with  .x3p files. The code shown will read an .x3p file into `R` and display it in 3D using a local `rgl` device. 
+- The plot shown, while not the output of the `image_x3p` function, shows the contents of the surface matrix where height values are mapped to grayscale. Note that lighter colored pixels represent higher values than darker pixels. 
 
 ---
 
@@ -207,23 +247,13 @@ class: inverse, middle, center
     - Or, take observed values within final selection threshold
 
 
-```r
-fadul1.1 &lt;- x3ptools::read_x3p("data/Fadul 1-1.x3p") %&gt;%
-  x3ptools::sample_x3p(m = 2)
-
-fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
-  cmcR::preProcess_ransac(inlierTreshold = 10^-5,
-                          finalSelectionThreshold = 2*(10^-5),
-                          iters = 150) %&gt;%
-  cmcR::preProcess_levelBF(useResiduals = TRUE)
-```
 
 ---
 #1. Identify BF impression height value
 
 - Note: relies on randomly sampling surface matrix, so results may differ between uses
 
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-13-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-110-1.png" style="display: block; margin: auto;" /&gt;
 
 ---
 #2. Removing "minutiae"
@@ -231,11 +261,7 @@ fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
 - Crop-out whitespace exterior to cartridge case scan
 
 
-```r
-fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
-  cmcR::preProcess_cropWS(croppingThresh = 2)
-```
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-15-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-112-1.png" style="display: block; margin: auto;" /&gt;
 
 
 ---
@@ -311,11 +337,7 @@ fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
 #2. Removing "minutiae" - Hough transform
 
 
-```r
-fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
-  cmcR::preProcess_removeFPCircle() 
-```
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-22-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-119-1.png" style="display: block; margin: auto;" /&gt;
 
 ---
 #3. Gaussian filtering
@@ -367,7 +389,7 @@ fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
                                wavelength = c(16,250),
                                filtertype = "bp")
 ```
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-24-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-121-1.png" style="display: block; margin: auto;" /&gt;
 
 
 ---
@@ -525,9 +547,6 @@ comparison1 &lt;- cmcR::cellCCF(fadul1.1,
                              scaleCell = "individualCell")
 ```
 
-```r
-comparison1$ccfResults$`-30`
-```
 
 
 &lt;div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:200px; "&gt;&lt;table class="table" style="margin-left: auto; margin-right: auto;"&gt;
@@ -840,16 +859,10 @@ class: inverse, middle, center
 
 
 
-```r
-topResults &lt;- cmcR::topResultsPerCell(comparison1$ccfResults)
-```
 
 ---
 #Initially proposed method
 
-```r
-topResults
-```
 &lt;div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:400px; "&gt;&lt;table class="table" style="margin-left: auto; margin-right: auto;"&gt;
  &lt;thead&gt;
   &lt;tr&gt;
@@ -1200,17 +1213,7 @@ topResults
 #Initially proposed method
 
 
-```r
-initialCMCs &lt;- topResults %&gt;%
-  cmcR::cmcFilter(consensus_function = median,
-                  ccf_thresh = .6,
-                  dx_thresh = 10,
-                  theta_thresh = 3)
-```
 
-```r
-initialCMCs #8 initial CMCs
-```
 
 &lt;div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:300px; "&gt;&lt;table class="table" style="margin-left: auto; margin-right: auto;"&gt;
  &lt;thead&gt;
@@ -1310,7 +1313,7 @@ initialCMCs #8 initial CMCs
 - Use extracted features more advantageously &amp; perform comparisons in both "directions" &lt;sup&gt;[1]&lt;/sup&gt;
 
 .footnote[
-[1] Tong Song, et al. [TSC15]
+[1] Tong, Song, and Chu [TSC15]
 ]
 
 --
@@ -1363,9 +1366,6 @@ cmc &lt;- comparison2 %&gt;%
 # "Improved" method
 
 
-```r
-cmc$finalCMCs #24 final CMCs
-```
 &lt;div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:400px; "&gt;&lt;table class="table" style="margin-left: auto; margin-right: auto;"&gt;
  &lt;thead&gt;
   &lt;tr&gt;
@@ -1630,14 +1630,14 @@ cmc$finalCMCs #24 final CMCs
 cmcR::cmcPlot(fadul1.1,cmcDF = cmc$initialCMCs[[1]],method = "ggplot2")
 ```
 
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-45-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-142-1.png" style="display: block; margin: auto;" /&gt;
 
 
 ```r
 cmcR::cmcPlot(fadul1.1,cmcDF = cmc$finalCMCs,method = "ggplot2")
 ```
 
-&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-46-1.png" style="display: block; margin: auto;" /&gt;
+&lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-143-1.png" style="display: block; margin: auto;" /&gt;
 
 
 ---
@@ -1653,7 +1653,7 @@ class: inverse, middle, center
     - 63 known match (KM) pairs, 717 known non-match (KNM) pairs
 
 .footnote[
-[1] Fadul Hernandez, et al. [Fad+11]
+[1] Fadul, Hernandez, Stoiloff, and Sneh [Fad+11]
 ]
 
 --
@@ -1683,7 +1683,7 @@ class: inverse, middle, center
 .footnote[
 [1] See appendix slides
 
-[2] Tong Song, et al. [Ton+14]
+[2] Tong, Song, Chu, and Thompson [Ton+14]
 ]
 
 --
@@ -1709,7 +1709,7 @@ class: inverse, middle, center
 - More "false positive" CMCs assigned to KNM than other authors&lt;sup&gt;[1]&lt;/sup&gt;
 
 .footnote[
-[1] Chen Song, et al. [Che+17]
+[1] Chen, Song, Chu, Soons, and Zhao [Che+17]
 ]
 
 ---
@@ -1763,49 +1763,34 @@ class: inverse, middle, center
 
 ---
 #References
-Chen, Z, J. Song, et al. (2017). "A convergence algorithm for
-correlation of breech face images based on the congruent
-matching cells (CMC) method". In: _Forensic Science
-International_ 280, pp. 213-223. DOI:
+Chen, Z, J. Song, et al. (2017). "A convergence algorithm for correlation of breech face images based on the congruent matching cells
+(CMC) method". In: _Forensic Science International_ 280, pp. 213-223. DOI:
 [10.1016/j.forsciint.2017.08.033](https://doi.org/10.1016%2Fj.forsciint.2017.08.033).
 
-Fadul, T., G. Hernandez, et al. (2011). _An Empirical Study to
-Improve the Scientific Foundation of Forensic Firearm and Tool
-Mark Identification Utilizing 10 Consecutively Manufactured
-Slides_.
+Fadul, T., G. Hernandez, et al. (2011). _An Empirical Study to Improve the Scientific Foundation of Forensic Firearm and Tool Mark
+Identification Utilizing 10 Consecutively Manufactured Slides_.
 
-Fischler, M. A. and R. C. Bolles (1981). "Random Sample
-Consensus: A Paradigm for Model Fitting with Applications to
-Image Analysis and Automated Cartography". In: _Commun. ACM_
-24.6, p. 381â€“395. DOI:
+Fischler, M. A. and R. C. Bolles (1981). "Random Sample Consensus: A Paradigm for Model Fitting with Applications to Image Analysis
+and Automated Cartography". In: _Commun. ACM_ 24.6, p. 381â€“395. DOI:
 [10.1145/358669.358692](https://doi.org/10.1145%2F358669.358692).
 
-Hough, P. (1962). _Method and means for recognizing complex
-patterns_. U.S. Patent 3,069,654
+Hough, P. (1962). _Method and means for recognizing complex patterns_. U.S. Patent 3,069,654
 
 ---
 #References (cont'd.)
 
-Song, J. (2013). "Proposed "NIST Ballistics Identification
-System (NBIS)" Based on 3D Topography Measurements on
-Correlation Cells". In: _American Firearm and Tool Mark
-Examiners Journal_ 45.2, p. 11.
+Song, J. (2013). "Proposed "NIST Ballistics Identification System (NBIS)" Based on 3D Topography Measurements on Correlation Cells".
+In: _American Firearm and Tool Mark Examiners Journal_ 45.2, p. 11.
 
-Tai, X. H. and W. F. Eddy (2018). "A Fully Automatic Method for
-Comparing Cartridge Case Images,". In: _Journal of Forensic
-Sciences_ 63.2, pp. 440-448. DOI:
-[10.1111/1556-4029.13577](https://doi.org/10.1111%2F1556-4029.13577).
+Tai, X. H. and W. F. Eddy (2018). "A Fully Automatic Method for Comparing Cartridge Case Images,". In: _Journal of Forensic Sciences_
+63.2, pp. 440-448. DOI: [10.1111/1556-4029.13577](https://doi.org/10.1111%2F1556-4029.13577).
 
-Tong, M, J. Song, et al. (2015). "An Improved Algorithm of
-Congruent Matching Cells (CMC) Method for Firearm Evidence
-Identifications". In: _Journal of Research of the National
-Institute of Standards and Technology_ 120, p. 102. DOI:
+Tong, M, J. Song, et al. (2015). "An Improved Algorithm of Congruent Matching Cells (CMC) Method for Firearm Evidence
+Identifications". In: _Journal of Research of the National Institute of Standards and Technology_ 120, p. 102. DOI:
 [10.6028/jres.120.008](https://doi.org/10.6028%2Fjres.120.008).
 
-Tong, M, J. Song, et al. (2014). "Fired Cartridge Case
-Identification Using Optical Images and the Congruent Matching
-Cells (CMC) Method". In: _Journal of Research of the National
-Institute of Standards and Technology_ 119, p. 575. DOI:
+Tong, M, J. Song, et al. (2014). "Fired Cartridge Case Identification Using Optical Images and the Congruent Matching Cells (CMC)
+Method". In: _Journal of Research of the National Institute of Standards and Technology_ 119, p. 575. DOI:
 [10.6028/jres.119.023](https://doi.org/10.6028%2Fjres.119.023).
 
 
