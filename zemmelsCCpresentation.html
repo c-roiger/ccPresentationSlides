@@ -347,7 +347,6 @@ fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
   cmcR::preProcess_cropWS(croppingThresh = 2) %&gt;%
   cmcR::preProcess_removeFPCircle()
 ```
-
 &lt;img src="zemmelsCCpresentation_files/figure-html/unnamed-chunk-14-1.png" style="display: block; margin: auto;" /&gt;
 
 ???
@@ -361,37 +360,7 @@ fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
 
 - "High-frequency" noise due to, e.g., scanning process
 
-- Gaussian filtering reduces effects of large and small-scale structure
-
 --
-- Lowpass filtering = "smoothing"
-
-    - Gaussian-weighted moving average
-
---
-
-- Highpass filtering = "sharpening"
-
-    - Subtract complementary lowpass-filtered matrix
-
---
-
-- Bandpass filtering = highpass followed by lowpass
-
-???
-- There may exist some global "signal" in a cartridge case scan due to the way in which the cartridge case was manufactured.
- - We can refer to this as "low frequency" or "large wavelength" structure
-- Additionally, noise may be inherent in a scan due to small measurement error in the scanning process.
- - These can be thought of as "high frequency" structure
-- Neither of these structures are useful to us in making classifcations
-- A Gaussian filter is a tool to lessen the effects of certain signals in a scan
-- A low pass Gaussian filter can be thought of as performing a locally weighted moving average over a scan. This then "smooths" the scan and reduces the effects of high frequency noise.
-- A high pass Gaussian filter, on the other hand, is meant to reduce the effects of low frequency signal. The term used for the effect such a filter has is to "sharpen" the image since high frequency signals become more apparent.
- - To implement a high frequency filter, one can subtract the complementary lowpass filtered surface matrix
-- A bandpass filter combines a highpass and lowpass filter - thus reducing the effects signals that we don't want to consider in our comparisons
-
----
-#3. Gaussian filtering
 
 - Goal is to match cartridge cases based on *breech face impressions*, not on whether they share a manufacturer
 
@@ -401,10 +370,44 @@ fadul1.1$surface.matrix &lt;- fadul1.1$surface.matrix %&gt;%
 
 - False positive rate increases in test data if structures aren't removed 
 
+--
+
+- Gaussian bandpass filtering reduces effects of large and small-scale structure
+
+&lt;!-- -- --&gt;
+&lt;!-- - Lowpass filtering = "smoothing" --&gt;
+
+&lt;!--     - Gaussian-weighted moving average --&gt;
+
+&lt;!-- -- --&gt;
+
+&lt;!-- - Highpass filtering = "sharpening" --&gt;
+
+&lt;!--     - Subtract complementary lowpass-filtered matrix --&gt;
+
+&lt;!-- -- --&gt;
+
+&lt;!-- - Bandpass filtering = highpass followed by lowpass --&gt;
+
 ???
+- There may exist some global "signal" in a cartridge case scan due to the way in which the cartridge case was manufactured.
+ - We can refer to this as "low frequency" or "large wavelength" structure
+- Additionally, noise may be inherent in a scan due to small measurement error in the scanning process.
+ - These can be thought of as "high frequency" structure
+- Neither of these structures are useful to us in making classifcations
+
 - One might think that we want to include signal that could tie a cartridge case to a particular manufacturer.
 - However, it's important to keep in-mind that we want to make classifications based on the breech face impressions (i.e., signal introduced from the firearm) rather than manufacturing specifications.
+
 - We have seen evidence of an increase in the false positive rate if the low frequency signal is not removed prior to comparison. This makes sense since two cartridge cases fired from two different guns may have come from the same manufacturer, so not removing such information may lead us to make misclassifications.
+
+- Gaussian bandpass filtering is a tool that can be used to reduce the effects of both of these strucures
+
+&lt;!-- - A Gaussian filter is a tool to lessen the effects of certain signals in a scan --&gt;
+&lt;!-- - A low pass Gaussian filter can be thought of as performing a locally weighted moving average over a scan. This then "smooths" the scan and reduces the effects of high frequency noise. --&gt;
+&lt;!-- - A high pass Gaussian filter, on the other hand, is meant to reduce the effects of low frequency signal. The term used for the effect such a filter has is to "sharpen" the image since high frequency signals become more apparent. --&gt;
+&lt;!--  - To implement a high frequency filter, one can subtract the complementary lowpass filtered surface matrix --&gt;
+&lt;!-- - A bandpass filter combines a highpass and lowpass filter - thus reducing the effects signals that we don't want to consider in our comparisons --&gt;
 
 ---
 #3. Gaussian filtering
@@ -1879,20 +1882,7 @@ class: inverse, middle, center
 - We can see because of the overlap between the KM and KNM distributions, perfect classification is not attainable.
 
 ---
-# Initially proposed method sensitivity
-
-&lt;img src="images/initialCMCResidualsBP16_250plot_corr30-90_trans10-30_noAUC.png" width="634" style="display: block; margin: auto;" /&gt;
-
-???
-- These plots show the CMC distributions under various combination of translation and ccf thresholds.
- - From top to bottom the CCF threshold becomes more restrictive. From left to right the translation threshold becomes less restrictive.
- - So the most restrictive conditions are those in the bottom left corner and least in the top right.
-- These plots can be used to visually determine which thresholds yield the most promising results.
-- For example, the plot on the previous page fits between the second and third row in the first column.
-- The ROC curves associated with these 20 plots are given in the appendix.
-
----
-# Initially proposed method discussion
+# Initially proposed method results
 
 - Perfect classification achieved under other alignment parameter thresholds&lt;sup&gt;[1]&lt;/sup&gt;
 
@@ -1914,6 +1904,19 @@ class: inverse, middle, center
 - Additionally, it should also be noted that the original authors were able to achieve better separation between the KM and KNM distributions. We can likely chalk that up to their particular implementation.
 
 ---
+# Initially proposed method sensitivity
+
+&lt;img src="images/initialCMCResidualsBP16_250plot_corr30-90_trans10-30_noAUC.png" width="634" style="display: block; margin: auto;" /&gt;
+
+???
+- These plots show the CMC distributions under various combination of translation and ccf thresholds.
+ - From top to bottom the CCF threshold becomes more restrictive. From left to right the translation threshold becomes less restrictive.
+ - So the most restrictive conditions are those in the bottom left corner and least in the top right.
+- These plots can be used to visually determine which thresholds yield the most promising results.
+- For example, the plot on the previous page fits between the second and third row in the first column.
+- The ROC curves associated with these 20 plots are given in the appendix.
+
+---
 #Improved method results
 
 &lt;img src="images/finalCMCdistributions.png" width="395" style="display: block; margin: auto;" /&gt;
@@ -1926,17 +1929,7 @@ class: inverse, middle, center
  - However, both KNM and KM pairs are more often assigned a higher CMC value. This means more true *and* false positives.
 
 ---
-# Improved method sensitivity
-
-&lt;img src="images/cmcResidualsBP16_250_corr30-90_trans10-30_noAUC.png" width="634" style="display: block; margin: auto;" /&gt;
-
-???
-- This plot shows the behavior the "final" CMC distributions across various threshold combinations.
-- We can see the improved method tends to give more CMCs to known matches, but also to known non-matches. In particular, a second "mode" of CMCs can be seen for the known non-matches in the first two rows of plots.
- - These can be chalked up to known non-matches that passed the additional "high CMC" criterion discussed previously. It's possible that small tweaks to the current implementation of the method may reduce if not eliminate these "false positives."
-
----
-#Improved method discussion
+#Improved method results
 
 - Improved method tends to assign higher CMC count to both KM and KNM
 
@@ -1953,6 +1946,15 @@ class: inverse, middle, center
 
 ???
 
+---
+# Improved method sensitivity
+
+&lt;img src="images/cmcResidualsBP16_250_corr30-90_trans10-30_noAUC.png" width="634" style="display: block; margin: auto;" /&gt;
+
+???
+- This plot shows the behavior the "final" CMC distributions across various threshold combinations.
+- We can see the improved method tends to give more CMCs to known matches, but also to known non-matches. In particular, a second "mode" of CMCs can be seen for the known non-matches in the first two rows of plots.
+ - These can be chalked up to known non-matches that passed the additional "high CMC" criterion discussed previously. It's possible that small tweaks to the current implementation of the method may reduce if not eliminate these "false positives."
 
 ---
 # Results &amp; Discussion
