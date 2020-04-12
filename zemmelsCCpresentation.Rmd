@@ -233,6 +233,8 @@ knitr::include_graphics(path = "images/im1_im2_cellComparison.png")
 
 - We expect $\pmb{\beta}_i = \pmb{\beta}, \forall i = 1,...,n$ for true matches
  
+--
+ 
 - It's tractable to determine whether $\hat{\pmb{\beta}}_i \approx \hat{\pmb{\beta}}_j, i \neq j$
  
 - Use estimated alignment parameters, $\hat{\pmb{\beta}}_i$, as features to classify matches 
@@ -355,7 +357,7 @@ Maybe skip these points:
 ---
 #2. Removing "minutiae"
 
-- Crop-out whitespace exterior to cartridge case scan
+- Crop-out whitespace exterior to breech face impressions
 
 --
 
@@ -363,7 +365,7 @@ Maybe skip these points:
 
 --
 
-- Use Hough transform circle detection method to detect and remove obserations within firing pin impression circle.
+- Use Hough transform circle detection method to detect and remove observations within firing pin impression circle.
 
 
 ???
@@ -831,7 +833,7 @@ initialCMCs %>%
 ---
 # "Improved" method
 
-- Cell pair may be highly similar at true $\pmb{\beta}$, but happened to not "vote" for it
+- Cell/region pair may be highly similar at true $\pmb{\beta}$, but happened to not "vote" for it
 
 --
 
@@ -1093,13 +1095,14 @@ knitr::include_graphics("images/cmcResidualsBP16_250_corr30-90_trans10-30_noAUC.
 
  - Dependent on alignment parameter thresholds
  
- - See manuscript associated with this presentation for a deeper discussion on sensitivity of implementation.
+ - Other authors able to achieve better separation
+ 
 
 --
  
-- Other authors able to achieve better separation
-
+- See manuscript associated with this presentation for a deeper discussion on sensitivity of implementation.
 --
+
 
 - Explore small changes to methodology (e.g., parameter tuning) in future
 
@@ -1134,7 +1137,7 @@ class: inverse, middle, center
 
 - **Longer-term:**
 
-    - CMC method improvments:
+    - CMC method improvements:
      - techniques for dealing with `NA`s
      - better classification diagnostics
      - implementation of closed-source methods

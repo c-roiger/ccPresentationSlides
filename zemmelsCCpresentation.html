@@ -211,6 +211,8 @@ x3ptools::image_x3p(fadul1.1)
 
 - We expect `\(\pmb{\beta}_i = \pmb{\beta}, \forall i = 1,...,n\)` for true matches
  
+--
+ 
 - It's tractable to determine whether `\(\hat{\pmb{\beta}}_i \approx \hat{\pmb{\beta}}_j, i \neq j\)`
  
 - Use estimated alignment parameters, `\(\hat{\pmb{\beta}}_i\)`, as features to classify matches 
@@ -323,7 +325,7 @@ Maybe skip these points:
 ---
 #2. Removing "minutiae"
 
-- Crop-out whitespace exterior to cartridge case scan
+- Crop-out whitespace exterior to breech face impressions
 
 --
 
@@ -331,7 +333,7 @@ Maybe skip these points:
 
 --
 
-- Use Hough transform circle detection method to detect and remove obserations within firing pin impression circle.
+- Use Hough transform circle detection method to detect and remove observations within firing pin impression circle.
 
 
 ???
@@ -1464,7 +1466,7 @@ initialCMCs #8 initial CMCs
 ---
 # "Improved" method
 
-- Cell pair may be highly similar at true `\(\pmb{\beta}\)`, but happened to not "vote" for it
+- Cell/region pair may be highly similar at true `\(\pmb{\beta}\)`, but happened to not "vote" for it
 
 --
 
@@ -1963,13 +1965,14 @@ class: inverse, middle, center
 
  - Dependent on alignment parameter thresholds
  
- - See manuscript associated with this presentation for a deeper discussion on sensitivity of implementation.
+ - Other authors able to achieve better separation
+ 
 
 --
  
-- Other authors able to achieve better separation
-
+- See manuscript associated with this presentation for a deeper discussion on sensitivity of implementation.
 --
+
 
 - Explore small changes to methodology (e.g., parameter tuning) in future
 
@@ -2004,7 +2007,7 @@ class: inverse, middle, center
 
 - **Longer-term:**
 
-    - CMC method improvments:
+    - CMC method improvements:
      - techniques for dealing with `NA`s
      - better classification diagnostics
      - implementation of closed-source methods
@@ -2013,39 +2016,42 @@ class: inverse, middle, center
 
 ---
 #References
-Chen, Z, J. Song, et al. (2017). "A convergence algorithm for correlation of breech
-face images based on the congruent matching cells (CMC) method". In: _Forensic
-Science International_ 280, pp. 213-223. DOI:
+Chen, Z, J. Song, et al. (2017). "A convergence algorithm for correlation
+of breech face images based on the congruent matching cells (CMC)
+method". In: _Forensic Science International_ 280, pp. 213-223. DOI:
 [10.1016/j.forsciint.2017.08.033](https://doi.org/10.1016%2Fj.forsciint.2017.08.033).
 
-Fadul, T., G. Hernandez, et al. (2011). _An Empirical Study to Improve the
-Scientific Foundation of Forensic Firearm and Tool Mark Identification Utilizing 10
-Consecutively Manufactured Slides_.
+Fadul, T., G. Hernandez, et al. (2011). _An Empirical Study to Improve
+the Scientific Foundation of Forensic Firearm and Tool Mark
+Identification Utilizing 10 Consecutively Manufactured Slides_.
 
-Fischler, M. A. and R. C. Bolles (1981). "Random Sample Consensus: A Paradigm for
-Model Fitting with Applications to Image Analysis and Automated Cartography". In:
-_Commun. ACM_ 24.6, p. 381â€“395. DOI:
+Fischler, M. A. and R. C. Bolles (1981). "Random Sample Consensus: A
+Paradigm for Model Fitting with Applications to Image Analysis and
+Automated Cartography". In: _Commun. ACM_ 24.6, p. 381â€“395. DOI:
 [10.1145/358669.358692](https://doi.org/10.1145%2F358669.358692).
 
-Song, J. (2013). "Proposed "NIST Ballistics Identification System (NBIS)" Based on
-3D Topography Measurements on Correlation Cells". In: _American Firearm and Tool
-Mark Examiners Journal_ 45.2, p. 11.
+Song, J. (2013). "Proposed "NIST Ballistics Identification System (NBIS)"
+Based on 3D Topography Measurements on Correlation Cells". In: _American
+Firearm and Tool Mark Examiners Journal_ 45.2, p. 11.
 
 ---
 #References (cont'd.)
 
-Tai, X. H. and W. F. Eddy (2018). "A Fully Automatic Method for Comparing Cartridge
-Case Images,". In: _Journal of Forensic Sciences_ 63.2, pp. 440-448. DOI:
+Tai, X. H. and W. F. Eddy (2018). "A Fully Automatic Method for Comparing
+Cartridge Case Images,". In: _Journal of Forensic Sciences_ 63.2, pp.
+440-448. DOI:
 [10.1111/1556-4029.13577](https://doi.org/10.1111%2F1556-4029.13577).
 
-Tong, M, J. Song, et al. (2015). "An Improved Algorithm of Congruent Matching Cells
-(CMC) Method for Firearm Evidence Identifications". In: _Journal of Research of the
-National Institute of Standards and Technology_ 120, p. 102. DOI:
+Tong, M, J. Song, et al. (2015). "An Improved Algorithm of Congruent
+Matching Cells (CMC) Method for Firearm Evidence Identifications". In:
+_Journal of Research of the National Institute of Standards and
+Technology_ 120, p. 102. DOI:
 [10.6028/jres.120.008](https://doi.org/10.6028%2Fjres.120.008).
 
-Tong, M, J. Song, et al. (2014). "Fired Cartridge Case Identification Using Optical
-Images and the Congruent Matching Cells (CMC) Method". In: _Journal of Research of
-the National Institute of Standards and Technology_ 119, p. 575. DOI:
+Tong, M, J. Song, et al. (2014). "Fired Cartridge Case Identification
+Using Optical Images and the Congruent Matching Cells (CMC) Method". In:
+_Journal of Research of the National Institute of Standards and
+Technology_ 119, p. 575. DOI:
 [10.6028/jres.119.023](https://doi.org/10.6028%2Fjres.119.023).
 
 
